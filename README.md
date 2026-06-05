@@ -1,0 +1,382 @@
+# EuroTech x Hong Kong Talent Engage Hackathon LeRobot Tutorial
+
+<!-- ==========================
+     Preface
+========================== -->
+<!--
+"To truly learn robotics, you need a strong mindset:
+ Everything in robotics is made by humans.
+ If others can figure it out, so can I.
+ There's no magic here, only things I don't understand yet.
+ One day, I'll know every detail and how everything works inside."
+
+ - Software cluster team lead of RoboTUM
+-->
+
+## 0. Foreword
+
+Hello dear participants!
+
+This README will help you set up your LeRobot leader + follower arms for the EuroTech x Hong Kong Talent Engage Hackathon. It compiles the most useful information from various sources for a quick start. The LeRobot project is unique in that once everything is set up, it is comparably easy to train models that work. We are excited to see what you can accomplish with the SO101 pairs and hope you'll be able to tackle the challenges of the next two days.
+
+This guide will mainly cover the prerequisites for imitation-based learning. If you're comfortable with some of the supported simulation environments or want to test them as well, you'll need to explore that on your own.
+
+**We are excited to see what you come up with!**
+
+### 0.1 Additional Resources
+
+While there are many good tutorials available, it can be challenging to grasp everything, especially in such a short time. It's easy to feel overwhelmed. For most of you, it might be best to stick to this README; however, we don't explain everything in detail here. Please read through the documentation alongside this guide — otherwise you might miss important context that could be very helpful.
+
+**Recommended resources:**
+
+- `.md` files in the repository you're downloading
+- [HuggingFace documentation](https://huggingface.co/docs/lerobot/en/getting_started_real_world_robot) with examples for different arms
+- Videos on YouTube
+- Model-specific documentation:
+  - SmolVLA: [SmolVLA Documentation](https://huggingface.co/docs/lerobot/en/smolvla)
+  - GR00T: [NVIDIA Isaac GR00T in LeRobot](https://huggingface.co/blog/nvidia/nvidia-isaac-gr00t-in-lerobot), [Post-Training Isaac GR00T N1.5 for LeRobot SO-101](https://huggingface.co/blog/nvidia/gr00t-n1-5-so101-tuning)
+
+If you want to understand exactly what's happening under the hood, feel free to explore the code. LLMs can also be very helpful for understanding!
+
+---
+
+## 1. Install uv (Python Package & Environment Manager)
+
+We use **uv** — a fast, modern Python package manager that handles virtual environments, Python versions, and dependencies in one tool. No conda needed.
+
+### macOS / Linux
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Then restart your terminal (or run `source ~/.bashrc` / `source ~/.zshrc`).
+
+### Windows
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**Check installation:**
+
+```bash
+uv --version
+```
+
+> **More info:** https://docs.astral.sh/uv/getting-started/installation/
+
+---
+
+## 2. Install FFmpeg (Required)
+
+LeRobot uses FFmpeg for video handling and logging demonstrations.
+
+### macOS
+
+```bash
+brew install ffmpeg
+```
+
+### Linux (Ubuntu/Debian)
+
+```bash
+sudo apt-get update && sudo apt-get install -y ffmpeg
+```
+
+### Windows
+
+Download from https://ffmpeg.org/download.html and add it to your `PATH`, or use:
+
+```powershell
+winget install ffmpeg
+```
+
+---
+
+## 3. Clone LeRobot and Set Up the Environment
+
+Clone the LeRobot repository:
+
+```bash
+git clone https://github.com/huggingface/lerobot.git
+cd lerobot
+```
+
+Create a virtual environment with Python 3.12 and activate it:
+
+```bash
+uv venv --python 3.12
+```
+
+Activate:
+
+- **macOS / Linux:**
+  ```bash
+  source .venv/bin/activate
+  ```
+- **Windows (PowerShell):**
+  ```powershell
+  .venv\Scripts\activate
+  ```
+
+Install LeRobot from source:
+
+```bash
+uv pip install -e .
+```
+
+> **NOTE:** If you encounter build errors, you may need system-level dependencies (`cmake`, `build-essential`, `ffmpeg` dev libs). Check the LeRobot README for details: https://github.com/huggingface/lerobot
+
+Install the Feetech SDK for the servos:
+
+```bash
+uv pip install -e ".[feetech]"
+```
+
+---
+
+## 4. General Setup of Your Arms
+
+> **NOTE:** You'll need to choose between following the *LeRobot documentation* and *this shorter README*.
+> It's recommended to review both. The official documentation is more rigorous and covers everything from robot assembly.
+
+The official documentation for the SO101 arms can be found in your cloned project folder at:
+
+```
+lerobot/docs/source
+```
+
+**Important files you'll find there:**
+
+- **so101.mdx** → Tutorial for the SO-101 leader and follower arms
+- **cameras.mdx** → Tutorial for setting up cameras
+- And others
+
+These files contain the official step-by-step guides created by the LeRobot team. They explain:
+
+- How to wire your arm
+- How to identify and check COM ports
+- How to test communication
+- How to calibrate motors
+
+Participants should read through these before running any code to avoid common hardware mistakes (port mismatches, incorrect motor connections, wrong IDs, etc.).
+
+### If You Choose to Stick with Us for Chapter 4
+
+This section is a shortened version of the so101.mdx file for the hackathon, since assembly and motor ID setup have already been completed.
+
+Here we quickly cover CLI commands and guide you through:
+
+- Finding ports
+- Calibrating leader/follower
+- Teleoperation
+- Helpful example commands
+
+### 4.1 Find Ports
+
+To automatically detect which port corresponds to which arm:
+
+```bash
+lerobot-find-port
+```
+
+Follow the instructions and note down the port for your follower and leader arm.
+
+### 4.2 Setup Motors if Servos Are Not Recognized (SKIP FOR NOW)
+
+This has already been done for your arms. However, from experience we know it might happen that you'll need to redo this.
+
+> **IMPORTANT NOTE:** This is a tedious process.
+
+**Troubleshooting steps:**
+- Check wiring on the robot arms themselves
+- Check whether you're using the correct power supply (5V for Leader, 12V for Follower)
+- Sometimes rebooting your PC or reseating cables will fix this
+
+> **For Camera Usage:** If connecting multiple USB devices through one hub/dongle, make sure the port supports the required bandwidth.
+
+**Setup motors - Follower:**
+
+```bash
+lerobot-setup-motors \
+    --robot.type=so101_follower \
+    --robot.port=/dev/ttyACM0
+```
+
+**Setup motors - Leader:**
+
+```bash
+lerobot-setup-motors \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/ttyACM1
+```
+
+### 4.3 Calibrate Your Arms
+
+Proper calibration ensures the leader and follower share the same "neutral positions," which is essential for precise teleoperation and model training. The `lerobot-calibrate` script will interactively guide you through the process. Calibration files are stored locally on your computer.
+
+**Make sure you know the center position and that your arms can move through their full range of motion.**
+
+**During calibration:**
+
+1. Move all 6 follower joints (motors) to their neutral center positions
+2. Press Enter
+3. Move each joint slowly through its full range of motion
+4. Press Enter when requested
+
+#### Follower
+
+```bash
+lerobot-calibrate \
+    --robot.type=so101_follower \
+    --robot.port=/dev/ttyACM0 \
+    --robot.id=Follower
+```
+
+For `robot.port`, use **your port**.
+
+#### Leader
+
+```bash
+lerobot-calibrate \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/ttyACM1 \
+    --teleop.id=Leader
+```
+
+For `teleop.port`, use **your port**.
+
+#### API Alternative
+
+```python
+from lerobot.teleoperators.so101_leader import SO101LeaderConfig, SO101Leader
+
+config = SO101LeaderConfig(
+    port="/dev/tty.usbmodem58760431551",
+    id="my_awesome_leader_arm",
+)
+
+leader = SO101Leader(config)
+leader.connect(calibrate=False)
+leader.calibrate()
+leader.disconnect()
+```
+
+> **NOTE:** On Windows, line breaks via `\` do not work in the terminal. Reshape the command into a single line without backslashes.
+
+---
+
+## 5. Teleoperation Test — Finally!
+
+Once the follower and leader are configured and calibrated, you can test teleoperation. **Watch out for the gripper camera!**
+
+> **CAUTION:** If something moves incorrectly, never try to physically restrain the robot.
+
+In case of unsafe behavior, kill the process immediately with:
+
+**CTRL + C**
+
+If the motors/joints lock up after stopping the code, unblock them by disconnecting the power supply, waiting a few seconds, and reconnecting.
+
+### First Teleoperation
+
+Make sure to substitute your actual ports and IDs:
+
+```bash
+lerobot-teleoperate \
+  --teleop.type=so101_leader \
+  --teleop.port=YOURLEADERPORT \
+  --teleop.id=YOURLEADERID \
+  --robot.type=so101_follower \
+  --robot.port=YOURFOLLOWERPORT \
+  --robot.id=YOURFOLLOWERID
+```
+
+**For Windows users (single line):**
+
+```
+lerobot-teleoperate --teleop.type so101_leader --teleop.port YOURLEADERPORT --teleop.id YOURLEADERID --robot.type so101_follower --robot.port YOURFOLLOWERPORT --robot.id YOURFOLLOWERID
+```
+
+---
+
+## 6. Bring Light into the Darkness
+
+Previously we mentioned the `cameras.mdx` file. Please take a look at it.
+
+RealSense cameras are not stable on macOS (especially M-series chips), and some of you might have trouble with installation. There are workarounds, but it might be easier to teleoperate and record using someone else's Linux machine.
+
+### 6.1 Camera Installation Guide
+
+#### OpenCV Camera (Gripper Cam)
+
+You'll need `cv2`, provided by `opencv-python`. This is likely already installed as a core LeRobot dependency.
+
+#### Linux Only
+
+On Ubuntu/Debian, the Python package alone is sometimes not enough. You might see:
+
+```
+ImportError: libGL.so.1: cannot open shared object file
+```
+
+Fix:
+
+```bash
+sudo apt-get update
+sudo apt-get install ffmpeg libsm6 libxext6 -y
+```
+
+#### Intel RealSense Depth Camera
+
+Install via pip:
+
+```bash
+uv pip install -e ".[intelrealsense]"
+```
+
+If you hit dependency issues, install the [RealSense SDK 2.0](https://github.com/IntelRealSense/librealsense) first. You can then verify your camera and update its firmware with:
+
+```bash
+realsense-viewer
+```
+
+### 6.2 Camera Usage
+
+Follow `cameras.mdx` in your cloned project to find the OpenCV index and RealSense serial number. You can also use:
+
+```bash
+lerobot-find-cameras opencv   # or: lerobot-find-cameras realsense
+```
+
+Then run teleoperation with cameras:
+
+```bash
+lerobot-teleoperate \
+  --robot.type=so101_follower \
+  --robot.port=/dev/ttyACM0 \
+  --robot.id=Follower \
+  --robot.cameras='{ \
+    wrist: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30}, \
+    front: {type: intelrealsense, serial_number_or_name: 839212070000, width: 848, height: 480, fps: 30, use_depth: true} \
+  }' \
+  --teleop.type=so101_leader \
+  --teleop.port=/dev/ttyACM1 \
+  --teleop.id=Leader \
+  --display_data=True
+```
+
+`--display_data=True` opens a Rerun window showing live camera feeds and joint positions.
+
+---
+
+## You're Ready to Record!
+
+You have completed all the steps for imitation-based learning. Before you start, think about:
+
+- What task you want the robot to learn
+- Which pre-trained policy you want to fine-tune (if any)
+- How to make your workspace consistent across episodes
+
+Next, you'll use the `lerobot-record` script. Good luck — and have fun!
