@@ -431,4 +431,120 @@ You have completed all the steps for imitation-based learning. Before you start,
 - Which pre-trained policy you want to fine-tune (if any)
 - How to make your workspace consistent across episodes
 
-Next, you'll use the `lerobot-record` script. Good luck — and have fun!
+Next, you'll use the `lerobot-record` script.
+
+---
+
+## 7. Train a Policy
+
+Once you have recorded enough demonstrations, it's time to train a policy. LeRobot ships a ready-to-use training script — you don't need to write any training code yourself to get started.
+
+### 7.1 The Train Script
+
+The script lives inside the LeRobot repository at:
+
+```
+lerobot/scripts/train.py
+```
+
+You can also call it directly from the terminal via the CLI entrypoint (no need to reference the file path):
+
+```bash
+lerobot-train --help
+```
+
+### 7.2 Running Training from the Terminal
+
+Here is a full example. Replace the dataset, output paths, and job name with your own:
+
+```bash
+lerobot-train \
+  --dataset.repo_id=YOUR_HF_USERNAME/YOUR_DATASET \
+  --policy.type=act \
+  --policy.use_vae=true \
+  --policy.use_amp=true \
+  --batch_size=16 \
+  --steps=60000 \
+  --log_freq=50 \
+  --save_checkpoint=true \
+  --save_freq=10000 \
+  --output_dir=outputs/act_run \
+  --job_name=act_run \
+  --resume=false
+```
+
+> **NOTE:** The `!` prefix in the example above is Kaggle/Jupyter notebook syntax. In a normal terminal, drop the `!` and run the command as shown.
+
+If you want to push the trained policy to the HuggingFace Hub so you can load it later or share it:
+
+```bash
+  --policy.push_to_hub=true \
+  --policy.repo_id=YOUR_HF_USERNAME/YOUR_POLICY_NAME
+```
+
+**Key flags explained:**
+
+| Flag | What it does |
+|------|-------------|
+| `--dataset.repo_id` | HuggingFace dataset to train on (e.g. `your-hf-username/my-dataset`) |
+| `--dataset.root` | Optional local path if the dataset is already downloaded |
+| `--policy.type` | Which policy architecture to use (see Section 7.3) |
+| `--batch_size` | Number of transitions per gradient step — lower if you run out of VRAM |
+| `--steps` | Total number of training steps |
+| `--log_freq` | How often (in steps) to print/log metrics |
+| `--save_checkpoint` | Whether to save model checkpoints |
+| `--save_freq` | Save a checkpoint every N steps |
+| `--output_dir` | Where to write checkpoints and logs |
+| `--job_name` | A human-readable name for this run |
+| `--resume` | Set to `true` to continue from the last checkpoint in `output_dir` |
+| `--policy.push_to_hub` | Upload the final policy to HuggingFace Hub |
+| `--policy.repo_id` | Hub repo to push to (e.g. `your-hf-username/my-policy`) |
+
+### 7.3 Choosing a Policy
+
+LeRobot supports several policy architectures. Here is a quick overview:
+
+| Policy | `--policy.type` | Best for | Weight |
+|--------|----------------|----------|--------|
+| **ACT** | `act` | Pick-and-place, short-horizon tasks. Fast to train, reliable. | Light |
+| **Diffusion Policy** | `diffusion` | Tasks requiring smooth, multimodal trajectories. Slightly slower to train but often more robust. | Light |
+| **SmolVLA** | `smolvla` | Vision-language conditioned tasks — give the robot a text instruction. Good balance of capability and size. | Medium |
+| Pi0 | `pi0` | Highly capable generalist VLA, but requires significant compute and data. | Heavy |
+| GR00T | *(via NVIDIA fine-tuning guide)* | NVIDIA's generalist robot foundation model. | Very heavy |
+
+**Our recommendation for the hackathon:** start with **ACT** (`--policy.type=act`) or **Diffusion Policy** (`--policy.type=diffusion`). They train in reasonable time on a GPU, are well-documented, and work well with 50–200 demonstrations. If your task involves natural language instructions, try **SmolVLA** (`--policy.type=smolvla`).
+
+Avoid Pi0 and GR00T unless you have access to a powerful multi-GPU machine — they are excellent models but not practical to fine-tune in a hackathon setting.
+
+**ACT-specific flags worth knowing:**
+
+```bash
+--policy.use_vae=true      # enables the VAE for latent action chunking — keep this true for ACT
+--policy.use_amp=true      # mixed precision training, speeds things up on modern GPUs
+--policy.chunk_size=100    # number of actions predicted per inference step (default 100)
+--policy.n_action_steps=100
+```
+
+**Diffusion Policy-specific flags:**
+
+```bash
+--policy.n_action_steps=8    # how many steps to execute per diffusion inference
+--policy.num_inference_steps=10  # denoising steps — lower = faster inference, slightly lower quality
+```
+
+### 7.4 Writing Your Own Training Script
+
+If you want more control — custom data augmentation, a different optimizer schedule, logging to Weights & Biases, etc. — you can write your own script on top of LeRobot's building blocks. The official `train.py` is a good starting point to copy and modify:
+
+```
+lerobot/scripts/train.py
+```
+
+The key classes you'll interact with are `LeRobotDataset`, the policy class for your chosen architecture, and the standard PyTorch training loop. LLMs are genuinely useful here for understanding the internals quickly.
+
+---
+
+## Good Luck!
+
+You now have everything you need: arms calibrated, data recorded, and a training pipeline ready to go. Keep episodes consistent, start with a simple task, and iterate fast. Have fun — and don't be afraid to ask for help!
+
