@@ -465,37 +465,26 @@ Discard and rerecord an episode if any of the following happened:
 
 ### 7.2 The lerobot-record Command
 
-Use `lerobot-record` to collect demonstrations. Here is a full example with two cameras (front + wrist):
+Use the `record.py` script to collect demonstrations. Run it from the root of your cloned LeRobot repo. Here is a full example with two cameras (front + wrist):
 
 ```bash
-lerobot-record \
-  --teleop.type=so101_leader \
-  --teleop.port=YOURLEADERPORT \
-  --teleop.id=LEADER \
+python src/lerobot/scripts/record.py \
   --robot.type=so101_follower \
   --robot.port=YOURFOLLOWERPORT \
   --robot.id=FOLLOWER \
-  --robot.cameras="{
-    front: {
-      type: opencv,
-      index_or_path: 0,
-      width: 640,
-      height: 480,
-      fps: 30,
-      warmup_s: 2
-    },
-    wrist: {
-      type: opencv,
-      index_or_path: 1,
-      width: 640,
-      height: 480,
-      fps: 30,
-      warmup_s: 2
-    }
-  }" \
+  --robot.cameras='{
+    front: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30, warmup_s: 2},
+    wrist: {type: opencv, index_or_path: 1, width: 640, height: 480, fps: 30, warmup_s: 2}
+  }' \
+  --teleop.type=so101_leader \
+  --teleop.port=YOURLEADERPORT \
+  --teleop.id=LEADER \
   --dataset.repo_id=YOUR_HF_USERNAME/YOUR_DATASET_NAME \
+  --dataset.root=data \
   --dataset.num_episodes=80 \
-  --display_data=True
+  --dataset.single_task="Describe your task here" \
+  --dataset.push_to_hub=false \
+  --display_data=true
 ```
 
 **Key flags explained:**
@@ -505,9 +494,12 @@ lerobot-record \
 | `--robot.cameras` | Defines which cameras to use and their settings. Each camera needs a name (e.g. `front`, `wrist`), a type, and an index or device path |
 | `index_or_path` | Camera index (0, 1, 2…) or a device path. Use `lerobot-find-cameras opencv` to find the right index for each camera |
 | `warmup_s` | Seconds to let the camera warm up before recording starts — helps avoid dark or blurry first frames |
-| `--dataset.repo_id` | Where the dataset will be saved on HuggingFace Hub |
+| `--dataset.repo_id` | HuggingFace Hub repo where the dataset will be uploaded (if push is enabled) |
+| `--dataset.root` | Local folder where episode data is saved during recording (e.g. `data`) |
 | `--dataset.num_episodes` | How many episodes to record in this session |
-| `--display_data=True` | Opens a Rerun window showing live camera feeds and joint states while recording |
+| `--dataset.single_task` | A short natural language description of the task (e.g. `"Grab the grey circle"`) — used as a label in the dataset |
+| `--dataset.push_to_hub` | Set to `true` to upload to HuggingFace Hub after recording, `false` to keep local only |
+| `--display_data=true` | Opens a Rerun window showing live camera feeds and joint states while recording |
 
 #### Keyboard Controls During Recording
 
