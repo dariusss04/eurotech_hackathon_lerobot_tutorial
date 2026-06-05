@@ -40,23 +40,62 @@ If you want to understand exactly what's happening under the hood, feel free to 
 
 ---
 
-## 1. Install uv (Python Package & Environment Manager)
+## 0.2 Power Supply — Read This Before You Touch Anything
 
-We use **uv** — a fast, modern Python package manager that handles virtual environments, Python versions, and dependencies in one tool. No conda needed.
+> **⚠️ CRITICAL: Using the wrong voltage can damage the servos permanently.**
 
-### macOS / Linux
+The two arms require different voltages:
 
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+| Arm | Role | Required Voltage |
+|-----|------|-----------------|
+| **Leader** (no gripper, you hold it) | Teleoperator | **5 V** |
+| **Follower** (has gripper, does the work) | Robot | **12 V** |
 
-Then restart your terminal (or run `source ~/.bashrc` / `source ~/.zshrc`).
+**Always double-check which power supply is plugged into which arm before switching anything on.** The connectors are often the same, so it is easy to mix them up. If a servo feels unusually hot or does not respond, power off immediately and verify.
 
-### Windows
+---
 
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
+## 0.3 Common Hardware Problems
+
+Before blaming the software, run through this checklist whenever motors are not detected, IDs are missing, or motion is erratic.
+
+**Motor / servo not recognized:**
+- Check every servo-to-servo cable along the chain — a single jumped or half-inserted connector breaks communication for everything downstream
+- Wiggle each connector gently; if the arm suddenly appears, reseat that cable properly
+- Verify the correct voltage is supplied (see above)
+- Try a different USB cable between the arm and your computer
+- Reboot the computer and replug the arm — OS-level USB issues are common
+
+**Wrong or duplicate motor IDs:**
+- If you see unexpected IDs or none at all, the motor ID setup may have been corrupted — see Section 4.2 for how to redo it
+- Only one arm should be connected when running `lerobot-setup-motors`; having both plugged in at once can cause ID conflicts
+
+**Arm moves but behaves erratically:**
+- Re-run calibration (Section 4.3) — a bad calibration file is the most common cause
+- Make sure the arm can physically reach its full range without hitting itself or the table during calibration
+
+**General rule:** hardware problems are almost always mechanical (loose cable, wrong power) rather than software. Check the physical setup first.
+
+---
+
+## 1. Set Up Your Python Environment
+
+You have two options. **uv** is faster and handles Python versions automatically. **venv** is the classic built-in approach and needs no extra install.
+
+### Option A — uv (Recommended: faster, simpler)
+
+Install uv:
+
+- **macOS / Linux:**
+  ```bash
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  ```
+  Then restart your terminal (or run `source ~/.bashrc` / `source ~/.zshrc`).
+
+- **Windows:**
+  ```powershell
+  powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+  ```
 
 **Check installation:**
 
@@ -65,6 +104,10 @@ uv --version
 ```
 
 > **More info:** https://docs.astral.sh/uv/getting-started/installation/
+
+### Option B — Python venv (Classic, no extra tools needed)
+
+Make sure Python 3.12 is installed on your system (https://www.python.org/downloads/), then continue — the environment creation commands are shown in Section 3 below.
 
 ---
 
@@ -103,7 +146,9 @@ git clone https://github.com/huggingface/lerobot.git
 cd lerobot
 ```
 
-Create a virtual environment with Python 3.12 and activate it:
+Create and activate a virtual environment — pick the path that matches your choice in Section 1:
+
+#### Option A — uv
 
 ```bash
 uv venv --python 3.12
@@ -111,28 +156,35 @@ uv venv --python 3.12
 
 Activate:
 
-- **macOS / Linux:**
-  ```bash
-  source .venv/bin/activate
-  ```
-- **Windows (PowerShell):**
-  ```powershell
-  .venv\Scripts\activate
-  ```
+- **macOS / Linux:** `source .venv/bin/activate`
+- **Windows:** `.venv\Scripts\activate`
 
-Install LeRobot from source:
+Install LeRobot and the Feetech SDK:
 
 ```bash
 uv pip install -e .
+uv pip install -e ".[feetech]"
+```
+
+#### Option B — venv
+
+```bash
+python3.12 -m venv .venv
+```
+
+Activate:
+
+- **macOS / Linux:** `source .venv/bin/activate`
+- **Windows:** `.venv\Scripts\activate`
+
+Install LeRobot and the Feetech SDK:
+
+```bash
+pip install -e .
+pip install -e ".[feetech]"
 ```
 
 > **NOTE:** If you encounter build errors, you may need system-level dependencies (`cmake`, `build-essential`, `ffmpeg` dev libs). Check the LeRobot README for details: https://github.com/huggingface/lerobot
-
-Install the Feetech SDK for the servos:
-
-```bash
-uv pip install -e ".[feetech]"
-```
 
 ---
 
