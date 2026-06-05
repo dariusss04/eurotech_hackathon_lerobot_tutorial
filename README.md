@@ -423,23 +423,108 @@ lerobot-teleoperate \
 
 ---
 
-## You're Ready to Record!
+## 7. Recording a Dataset
 
-You have completed all the steps for imitation-based learning. Before you start, think about:
+You have completed all the steps for imitation-based learning. Before you start recording, think about:
 
 - What task you want the robot to learn
 - Which pre-trained policy you want to fine-tune (if any)
-- How to make your workspace consistent across episodes
+- How to keep your workspace consistent across every episode
 
-Next, you'll use the `lerobot-record` script.
+### 7.1 Best Practices — Read Before You Record
+
+Getting the data right matters more than anything else. A policy trained on 80 clean episodes will outperform one trained on 200 messy ones.
+
+#### Keep Your Setup Stable
+
+- **Do not move the cameras between episodes.** Even a small shift changes what the model sees at inference time and will hurt performance.
+- **Fix your camera positions before recording episode 1** and leave them there for the entire dataset.
+- **Keep lighting conditions stable.** VLA models are particularly sensitive to changes in illumination — shadows, sunlight shifting, overhead lights flickering. Close the blinds, use consistent artificial lighting, and avoid recording across different times of day if you can.
+- **Keep the workspace clear.** Remove objects not relevant to the task — the model will try to learn from everything it sees.
+
+#### How to Record Good Episodes
+
+- **Vary starting positions.** Don't always place the object in the same spot. Spread it across the reachable workspace so the policy learns to generalize.
+- **Include edge cases.** Record from slightly different angles, distances, and orientations. The more variety in the demonstrations, the more robust the policy.
+- **Aim for at least 80 episodes.** Below that, most policies will overfit or fail to generalize. More is better, but only if the quality is there.
+- **Move smoothly and deliberately.** Shaky or hesitant motion gets baked into the policy. Slow down, be intentional, complete the full task before stopping.
+- **Keep your hands out of frame.** If your hand appears in the camera view during the episode, the model may try to imitate the hand rather than the gripper.
+
+#### When to Rerecord
+
+Discard and rerecord an episode if any of the following happened:
+
+- The task was not completed successfully
+- Motion was shaky, jerky, or inconsistent
+- The arm collided with something or moved erratically
+- A hand or body part entered the camera frame
+- The object was knocked out of place mid-episode and the arm continued anyway
+- Anything felt "off" — trust your instincts
+
+**Quality over quantity. One bad episode in your dataset is worse than no episode at all.**
+
+### 7.2 The lerobot-record Command
+
+Use `lerobot-record` to collect demonstrations. Here is a full example with two cameras (front + wrist):
+
+```bash
+lerobot-record \
+  --teleop.type=so101_leader \
+  --teleop.port=YOURLEADERPORT \
+  --teleop.id=LEADER \
+  --robot.type=so101_follower \
+  --robot.port=YOURFOLLOWERPORT \
+  --robot.id=FOLLOWER \
+  --robot.cameras="{
+    front: {
+      type: opencv,
+      index_or_path: 0,
+      width: 640,
+      height: 480,
+      fps: 30,
+      warmup_s: 2
+    },
+    wrist: {
+      type: opencv,
+      index_or_path: 1,
+      width: 640,
+      height: 480,
+      fps: 30,
+      warmup_s: 2
+    }
+  }" \
+  --dataset.repo_id=YOUR_HF_USERNAME/YOUR_DATASET_NAME \
+  --dataset.num_episodes=80 \
+  --display_data=True
+```
+
+**Key flags explained:**
+
+| Flag | What it does |
+|------|-------------|
+| `--robot.cameras` | Defines which cameras to use and their settings. Each camera needs a name (e.g. `front`, `wrist`), a type, and an index or device path |
+| `index_or_path` | Camera index (0, 1, 2…) or a device path. Use `lerobot-find-cameras opencv` to find the right index for each camera |
+| `warmup_s` | Seconds to let the camera warm up before recording starts — helps avoid dark or blurry first frames |
+| `--dataset.repo_id` | Where the dataset will be saved on HuggingFace Hub |
+| `--dataset.num_episodes` | How many episodes to record in this session |
+| `--display_data=True` | Opens a Rerun window showing live camera feeds and joint states while recording |
+
+#### Keyboard Controls During Recording
+
+| Key | Action |
+|-----|--------|
+| `→` (Right arrow) | **Stop the current episode early** and save it — use this when the task is done and you don't want to record unnecessary motion |
+| `←` (Left arrow) | **Discard and rerecord** the current episode — use this immediately if something went wrong |
+
+> **TIP:** Get comfortable with the left arrow. Using it freely to throw away bad episodes is exactly the right habit.
 
 ---
 
-## 7. Train a Policy
+## 8. Train a Policy
 
 Once you have recorded enough demonstrations, it's time to train a policy. LeRobot ships a ready-to-use training script — you don't need to write any training code yourself to get started.
 
-### 7.1 The Train Script
+### 8.1 The Train Script
 
 The script lives inside the LeRobot repository at:
 
@@ -453,7 +538,7 @@ You can also call it directly from the terminal via the CLI entrypoint (no need 
 lerobot-train --help
 ```
 
-### 7.2 Running Training from the Terminal
+### 8.2 Running Training from the Terminal
 
 Here is a full example. Replace the dataset, output paths, and job name with your own:
 
@@ -500,7 +585,7 @@ If you want to push the trained policy to the HuggingFace Hub so you can load it
 | `--policy.push_to_hub` | Upload the final policy to HuggingFace Hub |
 | `--policy.repo_id` | Hub repo to push to (e.g. `your-hf-username/my-policy`) |
 
-### 7.3 Choosing a Policy
+### 8.3 Choosing a Policy
 
 LeRobot supports several policy architectures. Here is a quick overview:
 
@@ -532,7 +617,7 @@ Avoid Pi0 and GR00T unless you have access to a powerful multi-GPU machine — t
 --policy.num_inference_steps=10  # denoising steps — lower = faster inference, slightly lower quality
 ```
 
-### 7.4 Writing Your Own Training Script
+### 8.4 Writing Your Own Training Script
 
 If you want more control — custom data augmentation, a different optimizer schedule, logging to Weights & Biases, etc. — you can write your own script on top of LeRobot's building blocks. The official `train.py` is a good starting point to copy and modify:
 
