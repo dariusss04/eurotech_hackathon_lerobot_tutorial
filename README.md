@@ -13,6 +13,19 @@
  - Software cluster team lead of RoboTUM
 -->
 
+## ⚠️ macOS Users — Read This First
+
+**Intel RealSense cameras do not work on macOS (including all M-series chips).** If you are on a Mac and your setup uses a RealSense camera, you will not be able to record datasets on your machine.
+
+**What to do:**
+- Find a teammate with a Linux laptop and use their machine for teleoperation and recording
+- Do the environment setup and get familiar with the codebase on your Mac, but plan to switch before the recording phase
+- USB webcams (OpenCV cameras) do work on macOS — so if your setup only uses those, you're fine
+
+Do not wait until you reach the camera section to figure this out. Coordinate with your team now.
+
+---
+
 ## 0. Foreword
 
 Hello dear participants!
