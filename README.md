@@ -502,7 +502,7 @@ your-project/
 Use the `record.py` script to collect demonstrations. Run it from the root of your cloned LeRobot repo. Here is a full example with two cameras (front + wrist):
 
 ```bash
-python src/lerobot/scripts/record.py \
+python src/lerobot/scripts/lerobot_record.py \
   --robot.type=so101_follower \
   --robot.port=YOURFOLLOWERPORT \
   --robot.id=FOLLOWER \
@@ -565,7 +565,7 @@ Once you have recorded enough demonstrations, it's time to train a policy. LeRob
 The script lives inside the LeRobot repository at:
 
 ```
-lerobot/scripts/train.py
+lerobot/scripts/lerobot_train.py
 ```
 
 You can also call it directly from the terminal via the CLI entrypoint (no need to reference the file path):
@@ -658,7 +658,7 @@ Avoid Pi0 and GR00T unless you have access to a powerful multi-GPU machine — t
 If you want more control — custom data augmentation, a different optimizer schedule, logging to Weights & Biases, etc. — you can write your own script on top of LeRobot's building blocks. The official `train.py` is a good starting point to copy and modify:
 
 ```
-lerobot/scripts/train.py
+lerobot/scripts/lerobot_train.py
 ```
 
 The key classes you'll interact with are `LeRobotDataset`, the policy class for your chosen architecture, and the standard PyTorch training loop. LLMs are genuinely useful here for understanding the internals quickly.
