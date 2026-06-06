@@ -478,6 +478,27 @@ Discard and rerecord an episode if any of the following happened:
 
 ### 7.2 The lerobot-record Command
 
+#### Recommended Folder Structure
+
+Keep everything self-contained inside your project folder. Here is a clean layout to follow:
+
+```
+your-project/
+├── configs/
+│   └── calibration/
+│       ├── robots/
+│       │   └── FOLLOWER.json        ← auto-created on first run
+│       └── teleoperators/
+│           └── LEADER.json          ← auto-created on first run
+├── data/                            ← recorded episodes land here
+└── outputs/                         ← training checkpoints land here
+```
+
+- `configs/calibration/` is separated by arm type so there is no naming conflict if you have multiple arms
+- `data/` is where `--dataset.root` points — LeRobot creates subfolders per dataset automatically
+- `outputs/` is where `--output_dir` points during training
+- None of these folders need to exist beforehand — LeRobot creates them on first use
+
 Use the `record.py` script to collect demonstrations. Run it from the root of your cloned LeRobot repo. Here is a full example with two cameras (front + wrist):
 
 ```bash
@@ -485,6 +506,7 @@ python src/lerobot/scripts/record.py \
   --robot.type=so101_follower \
   --robot.port=YOURFOLLOWERPORT \
   --robot.id=FOLLOWER \
+  --robot.calibration_dir=configs/calibration/robots \
   --robot.cameras='{
     front: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30, warmup_s: 2},
     wrist: {type: opencv, index_or_path: 1, width: 640, height: 480, fps: 30, warmup_s: 2}
@@ -492,6 +514,7 @@ python src/lerobot/scripts/record.py \
   --teleop.type=so101_leader \
   --teleop.port=YOURLEADERPORT \
   --teleop.id=LEADER \
+  --teleop.calibration_dir=configs/calibration/teleoperators \
   --dataset.repo_id=YOUR_HF_USERNAME/YOUR_DATASET_NAME \
   --dataset.root=data \
   --dataset.num_episodes=80 \
@@ -500,10 +523,18 @@ python src/lerobot/scripts/record.py \
   --display_data=true
 ```
 
+> **How calibration works with these flags:**
+> - **File exists** in the calibration folder → loaded automatically, recording starts immediately
+> - **File missing** → calibration runs first, saves the file, then recording starts
+>
+> This means the very first run on a new machine auto-calibrates and saves to a predictable location. Every run after that reuses it.
+
 **Key flags explained:**
 
 | Flag | What it does |
 |------|-------------|
+| `--robot.calibration_dir` | Folder where the follower's calibration file is stored/loaded. File is named `<robot.id>.json` |
+| `--teleop.calibration_dir` | Folder where the leader's calibration file is stored/loaded. File is named `<teleop.id>.json` |
 | `--robot.cameras` | Defines which cameras to use and their settings. Each camera needs a name (e.g. `front`, `wrist`), a type, and an index or device path |
 | `index_or_path` | Camera index (0, 1, 2…) or a device path. Use `lerobot-find-cameras opencv` to find the right index for each camera |
 | `warmup_s` | Seconds to let the camera warm up before recording starts — helps avoid dark or blurry first frames |
