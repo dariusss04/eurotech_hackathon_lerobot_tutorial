@@ -665,7 +665,50 @@ The key classes you'll interact with are `LeRobotDataset`, the policy class for 
 
 ---
 
+## 9. Running Inference — Write Your Own Script
+
+**LeRobot does not ship a built-in inference script or CLI command.** There is no `lerobot-infer` or equivalent. Once your model is trained, it is entirely up to you how you deploy it.
+
+You will need to write your own inference script tailored to your setup and task. At a minimum it needs to:
+
+1. Load the trained policy from your checkpoint or HuggingFace Hub
+2. Connect to the robot and cameras
+3. Run a loop: grab an observation → run it through the policy → send the predicted action to the robot
+
+A minimal starting point:
+
+```python
+from lerobot.policies.act.modeling_act import ACTPolicy
+from lerobot.robots.so_follower import SO101Follower, SO101FollowerConfig
+
+# Load policy from local checkpoint or Hub
+policy = ACTPolicy.from_pretrained("YOUR_HF_USERNAME/YOUR_POLICY_NAME")
+policy.eval()
+
+# Connect robot
+robot = SO101Follower(SO101FollowerConfig(
+    port="YOURFOLLOWERPORT",
+    id="FOLLOWER",
+    calibration_dir="configs/calibration/robots",
+    cameras={...},  # same camera config as during recording
+))
+robot.connect(calibrate=False)
+
+# Inference loop
+try:
+    while True:
+        observation = robot.get_observation()
+        action = policy.select_action(observation)
+        robot.send_action(action)
+finally:
+    robot.disconnect()
+```
+
+Adapt this to your policy type (`ACTPolicy`, `DiffusionPolicy`, `SmolVLAPolicy`, etc.) and your specific camera and task setup. The LeRobot source code and LLMs are your best friends here — the building blocks are all there, they just need to be wired together for your use case.
+
+---
+
 ## Good Luck!
 
-You now have everything you need: arms calibrated, data recorded, and a training pipeline ready to go. Keep episodes consistent, start with a simple task, and iterate fast. Have fun — and don't be afraid to ask for help!
+You now have everything you need: arms calibrated, data recorded, a training pipeline ready to go, and a starting point for inference. Keep episodes consistent, start with a simple task, and iterate fast. Have fun — and don't be afraid to ask for help!
 
